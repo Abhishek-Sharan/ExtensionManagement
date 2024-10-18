@@ -1,0 +1,61 @@
+# Prompt the user to enter the resource group name
+$resourceGroupName = Read-Host -Prompt "This script can install/uninstall AMA extension on VMs in a specific resource group; specify your resource group to continue"
+
+# Prompt the user to enter the operating system (Windows/Linux)
+$osType = Read-Host -Prompt "Enter the Operating System (Windows/Linux)"
+
+# Prompt the user to enter the operation (Install/Uninstall)
+$operation = Read-Host -Prompt "Enter the Operation (Install/Uninstall)"
+
+# If the operation is Install, prompt the user to enter the type handler version
+if ($operation -eq "Install") {
+    $typeHandlerVersion = Read-Host -Prompt "Enter the Type Handler Version"
+}
+
+# Get all VMs in the specified resource group
+$vms = Get-AzVM -ResourceGroupName $resourceGroupName
+
+# Loop through each VM and perform the specified operation
+foreach ($vm in $vms) {
+    if ($osType -eq "Windows") {
+        $extensionName = "AzureMonitorWindowsAgent"
+    } elseif ($osType -eq "Linux") {
+        $extensionName = "AzureMonitorLinuxAgent"
+    } else {
+        Write-Host "Invalid Operating System specified. Please enter either 'Windows' or 'Linux'." -ForegroundColor Red
+        exit
+    }
+
+    if ($operation -eq "Install") {
+        try {
+            Set-AzVMExtension -Name $extensionName `
+                              -ExtensionType $extensionName `
+                              -Publisher "Microsoft.Azure.Monitor" `
+                              -ResourceGroupName $resourceGroupName `
+                              -VMName $vm.Name `
+                              -Location $vm.Location `
+                              -TypeHandlerVersion $typeHandlerVersion `
+                              -EnableAutomaticUpgrade $true
+
+            Write-Host "Successfully installed Azure Monitor Agent on VM: $($vm.Name)" -ForegroundColor Green
+        } catch {
+            Write-Host "Failed to install Azure Monitor Agent on VM: $($vm.Name). Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    } elseif ($operation -eq "Uninstall") {
+        try {
+            Remove-AzVMExtension -ResourceGroupName $resourceGroupName `
+                                 -VMName $vm.Name `
+                                 -Name $extensionName `
+                                 -Force
+
+            Write-Host "Successfully uninstalled Azure Monitor Agent from VM: $($vm.Name)" -ForegroundColor Green
+        } catch {
+            Write-Host "Failed to uninstall Azure Monitor Agent from VM: $($vm.Name). Error: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    } else {
+        Write-Host "Invalid Operation specified. Please enter either 'Install' or 'Uninstall'." -ForegroundColor Red
+        exit
+    }
+}
+
+Write-Host "Operation process completed."
