@@ -1,5 +1,5 @@
 # Prompt the user to enter the resource group name
-$resourceGroupName = Read-Host -Prompt "This script installs AMA extension on Windows VMs in a specific resource group; specific your resource group name to continue"
+$resourceGroupName = Read-Host -Prompt "This script installs AMA extension on Windows VMs in a specific resource group; specify your resource group name to continue"
 
 # Get all VMs in the specified resource group
 $vms = Get-AzVM -ResourceGroupName $resourceGroupName
