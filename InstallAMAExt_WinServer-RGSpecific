@@ -1,0 +1,25 @@
+# Prompt the user to enter the resource group name
+$resourceGroupName = Read-Host -Prompt "This script installs AMA extension on Windows VMs in a specific resource group; specific your resource group name to continue"
+
+# Get all VMs in the specified resource group
+$vms = Get-AzVM -ResourceGroupName $resourceGroupName
+
+# Loop through each VM and set the Azure Monitor Agent extension
+foreach ($vm in $vms) {
+    try {
+        Set-AzVMExtension -Name "AzureMonitorWindowsAgent" `
+                          -ExtensionType "AzureMonitorWindowsAgent" `
+                          -Publisher "Microsoft.Azure.Monitor" `
+                          -ResourceGroupName $resourceGroupName `
+                          -VMName $vm.Name `
+                          -Location $vm.Location `
+                          -TypeHandlerVersion "1.3" `
+                          -EnableAutomaticUpgrade $true
+
+        Write-Host "Successfully installed Azure Monitor Agent on VM: $($vm.Name)" -ForegroundColor Green
+    } catch {
+        Write-Host "Failed to install Azure Monitor Agent on VM: $($vm.Name). Error: $($_.Exception.Message)" -ForegroundColor Red
+    }
+}
+
+Write-Host "Installation process completed."
