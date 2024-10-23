@@ -22,15 +22,29 @@ if ($operation -eq "Install") {
 # Get all VMs in the specified resource group
 $vms = Get-AzVM -ResourceGroupName $resourceGroupName
 
+# Check if there are any VMs with the specified operating system
+$osVms = $vms | Where-Object {
+    if ($osType -eq "Windows") {
+        $_.StorageProfile.OSDisk.OSType -eq "Windows"
+    } elseif ($osType -eq "Linux") {
+        $_.StorageProfile.OSDisk.OSType -eq "Linux"
+    } else {
+        Write-Host "Invalid Operating System specified. Please enter either 'Windows' or 'Linux'." -ForegroundColor Red
+        exit
+    }
+}
+
+if ($osVms.Count -eq 0) {
+    Write-Host "No VMs with the specified operating system found in the resource group." -ForegroundColor Red
+    exit
+}
+
 # Loop through each VM and perform the specified operation
-foreach ($vm in $vms) {
+foreach ($vm in $osVms) {
     if ($osType -eq "Windows") {
         $extensionName = "AzureMonitorWindowsAgent"
     } elseif ($osType -eq "Linux") {
         $extensionName = "AzureMonitorLinuxAgent"
-    } else {
-        Write-Host "Invalid Operating System specified. Please enter either 'Windows' or 'Linux'." -ForegroundColor Red
-        exit
     }
 
     if ($operation -eq "Install") {
