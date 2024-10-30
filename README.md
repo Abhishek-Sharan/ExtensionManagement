@@ -6,6 +6,6 @@
 # The author will not be held liable for any consequences resulting from the use of this script. Use at your own risk.
 
 # ExtensionManagement
-This repository contains PowerShell scripts to install and uninstall Azure Monitor Agent extensions for VMs hosted in a specific resource group.
+This repository contains PowerShell scripts to install and uninstall Azure Monitor Agent extensions for Azure VMs hosted in a specific resource group.
 
 **Note:** We highly recommend you should review the PowerShell script thoroughly and do proper testing in controlled environment. We don't take any responsibility for the script.
