@@ -1,4 +1,4 @@
-﻿# **Disclaimer:**
+# Disclaimer section (unchanged)
 Write-Host "************************* DISCLAIMER *************************"
 Write-Host "The author of this script provides it 'as is' without any guarantees or warranties of any kind."
 Write-Host "By using this script, you acknowledge that you are solely responsible for any damage, data loss, or other issues that may arise from its execution."
@@ -20,6 +20,13 @@ if ($consent -ne "yes") {
 Write-Host "Proceeding with the script..."
 
 $csvFilePath = "/home/abhishek/MDEExtReport/mdeextreport_output.csv"  # Update with your desired path
+
+# Ensure the folder exists
+$folderPath = [System.IO.Path]::GetDirectoryName($csvFilePath)
+if (-not (Test-Path -Path $folderPath)) {
+    Write-Host "The folder does not exist. Creating folder: $folderPath"
+    New-Item -Path $folderPath -ItemType Directory -Force
+}
 
 # Retrieve the VM and extension status for both Windows and Linux VMs
 $extensionStatus = Get-AzVM | ForEach-Object { 
