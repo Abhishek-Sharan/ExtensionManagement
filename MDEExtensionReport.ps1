@@ -1,4 +1,4 @@
-# Disclaimer section (unchanged)
+# Disclaimer 
 Write-Host "************************* DISCLAIMER *************************"
 Write-Host "The author of this script provides it 'as is' without any guarantees or warranties of any kind."
 Write-Host "By using this script, you acknowledge that you are solely responsible for any damage, data loss, or other issues that may arise from its execution."
@@ -33,41 +33,65 @@ $vms | ForEach-Object {
     $vmStatus = Get-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Status
     $extensions = ($vmStatus).Extensions | Where-Object { $_.Name -eq "MDE.Windows" -or $_.Name -eq "MDE.Linux" }
 
-    $extensions | ForEach-Object {
-        # Parse the JSON message
-        $parsedMessage = try {
-            $_.Statuses.Message | ConvertFrom-Json
-        } catch {
-            "Invalid JSON or no message"
-        }
+    # Get the VM OS type (Windows/Linux)
+    $osType = $vm.StorageProfile.OsDisk.OsType
 
-        # Limit or format the message for better readability
-        $formattedMessage = if ($parsedMessage -is [string]) {
-            if ($parsedMessage.Length -gt 100) {
-                $parsedMessage.Substring(0, 100) + "..."
-            } else {
-                $parsedMessage
-            }
-        } else {
-            $parsedMessage
-        }
-
-        # Create a custom object for the table output
+    if ($extensions.Count -eq 0) {
+        # If no MDE extensions found, append a message indicating they are missing
         $outputData += [PSCustomObject]@{
             "Subscription Name" = (Get-AzContext).Subscription.Name
             "VM Name"           = $vm.Name
-            "Extension Name"    = $_.Name
-            "Display Status"    = $_.Statuses.DisplayStatus
-            "Message"           = $formattedMessage
+            "VM OS"             = $osType
+            "Extension Name"    = "MDE Extensions Missing"
+            "Display Status"    = "N/A"
+            "Message"           = "MDE.Windows or MDE.Linux extensions are missing."
+        }
+    } else {
+        # Process the extensions if found
+        $extensions | ForEach-Object {
+            # Parse the JSON message
+            $parsedMessage = try {
+                $_.Statuses.Message | ConvertFrom-Json
+            } catch {
+                "Invalid JSON or no message"
+            }
+
+            # Limit or format the message for better readability
+            $formattedMessage = if ($parsedMessage -is [string]) {
+                if ($parsedMessage.Length -gt 100) {
+                    $parsedMessage.Substring(0, 100) + "..."
+                } else {
+                    $parsedMessage
+                }
+            } else {
+                $parsedMessage
+            }
+
+            # Create a custom object for the table output
+            $outputData += [PSCustomObject]@{
+                "Subscription Name" = (Get-AzContext).Subscription.Name
+                "VM Name"           = $vm.Name
+                "VM OS"             = $osType
+                "Extension Name"    = $_.Name
+                "Display Status"    = $_.Statuses.DisplayStatus
+                "Message"           = $formattedMessage
+            }
         }
     }
 }
 
 # Output to the console in a formatted table
-$outputData | Format-Table -Property "Subscription Name", "VM Name", "Extension Name", "Display Status", "Message"
+$outputData | Format-Table -Property "Subscription Name", "VM Name", "VM OS", "Extension Name", "Display Status", "Message"
 
-# Save the output to a CSV file locally
+# Specify the CSV file path
 $csvFilePath = "/home/abhishek/MDEExtReport/mdeextreport_output.csv"  # Update the path to where you want to store the CSV
-$outputData | Export-Csv -Path $csvFilePath -NoTypeInformation
 
-Write-Host "The report has been saved to: $csvFilePath"
+# Check if the directory exists
+$directory = [System.IO.Path]::GetDirectoryName($csvFilePath)
+if (-not (Test-Path -Path $directory)) {
+    Write-Host "Report wasn't saved as the specified path is invalid or the directory does not exist."
+} else {
+    # Save the output to a CSV file locally
+    $outputData | Export-Csv -Path $csvFilePath -NoTypeInformation
+    Write-Host "The report has been saved to: $csvFilePath"
+}
