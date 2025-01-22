@@ -49,32 +49,29 @@ $vms | ForEach-Object {
     } else {
         # Process the extensions if found
         $extensions | ForEach-Object {
-            # Parse the JSON message
-            $parsedMessage = try {
-                $_.Statuses.Message | ConvertFrom-Json
+            # Get the message and parse it into a single line
+            $message = $_.Statuses.Message
+
+            # Remove line breaks or newlines and replace them with spaces
+            $singleLineMessage = $message -replace "`r`n|`n|`r", " "
+
+            # If the message is JSON, we can parse it (optional)
+            try {
+                $parsedMessage = $singleLineMessage | ConvertFrom-Json
+                # Convert the JSON back to a single-line string
+                $singleLineMessage = $parsedMessage | ConvertTo-Json -Compress
             } catch {
-                "Invalid JSON or no message"
+                # If it's not JSON, keep the message as is
             }
 
-            # Limit or format the message for better readability
-            $formattedMessage = if ($parsedMessage -is [string]) {
-                if ($parsedMessage.Length -gt 100) {
-                    $parsedMessage.Substring(0, 100) + "..."
-                } else {
-                    $parsedMessage
-                }
-            } else {
-                $parsedMessage
-            }
-
-            # Create a custom object for the table output
+            # Create a custom object for the table output with the single-line message
             $outputData += [PSCustomObject]@{
                 "Subscription Name" = (Get-AzContext).Subscription.Name
                 "VM Name"           = $vm.Name
                 "VM OS"             = $osType
                 "Extension Name"    = $_.Name
                 "Display Status"    = $_.Statuses.DisplayStatus
-                "Message"           = $formattedMessage
+                "Message"           = $singleLineMessage
             }
         }
     }
