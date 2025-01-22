@@ -89,9 +89,16 @@ $csvFilePath = "/home/abhishek/MDEExtReport/mdeextreport_output.csv"  # Update t
 # Check if the directory exists
 $directory = [System.IO.Path]::GetDirectoryName($csvFilePath)
 if (-not (Test-Path -Path $directory)) {
-    Write-Host "Report wasn't saved as the specified path is invalid or the directory does not exist."
-} else {
-    # Save the output to a CSV file locally
-    $outputData | Export-Csv -Path $csvFilePath -NoTypeInformation
-    Write-Host "The report has been saved to: $csvFilePath"
+    # Create the directory if it doesn't exist
+    Write-Host "Directory does not exist. Creating directory: $directory"
+    New-Item -ItemType Directory -Force -Path $directory
 }
+
+# Check if the file exists and create it if missing
+if (-not (Test-Path -Path $csvFilePath)) {
+    Write-Host "File does not exist. Creating file: $csvFilePath"
+}
+
+# Save the output to a CSV file locally
+$outputData | Export-Csv -Path $csvFilePath -NoTypeInformation
+Write-Host "The report has been saved to: $csvFilePath"
