@@ -19,79 +19,55 @@ if ($consent -ne "yes") {
 # If consent is given, continue with the rest of the script
 Write-Host "Proceeding with the script..."
 
-$csvFilePath = "/home/abhishek/MDEExtReport/mdeextreport_output.csv"  # Update with your desired path
+# Get all VMs in the subscription
+$vms = Get-AzVM
 
-# Ensure the folder exists
-$folderPath = [System.IO.Path]::GetDirectoryName($csvFilePath)
-if (-not (Test-Path -Path $folderPath)) {
-    Write-Host "The folder does not exist. Creating folder: $folderPath"
-    New-Item -Path $folderPath -ItemType Directory -Force
-}
+# Initialize an array to collect the output
+$outputData = @()
 
-# Retrieve the VM and extension status for both Windows and Linux VMs
-$extensionStatus = Get-AzVM | ForEach-Object { 
+# Loop through each VM and check extensions
+$vms | ForEach-Object {
     $vm = $_
-    $osType = $vm.StorageProfile.OsDisk.OsType  # Determine OS type (Windows or Linux)
-    $extensionName = if ($osType -eq "Windows") { "MDE.Windows" } else { "MDE.Linux" }  # Set the extension name based on OS type
-    
-    # Get the subscription name (simplified to only the subscription name, no extra info)
-    $subscriptionName = (Get-AzContext).Subscription.Name
 
-    $resourceGroupName = $vm.ResourceGroupName  # Get the resource group name
-    
-    # Get the extensions for the VM
-    $extensions = Get-AzVMExtension -ResourceGroupName $vm.ResourceGroupName -VMName $vm.Name
-    $mdeExtension = $extensions | Where-Object { $_.Name -eq $extensionName }
+    # Get the VM status with extensions
+    $vmStatus = Get-AzVM -ResourceGroupName $vm.ResourceGroupName -Name $vm.Name -Status
+    $extensions = ($vmStatus).Extensions | Where-Object { $_.Name -eq "MDE.Windows" -or $_.Name -eq "MDE.Linux" }
 
-    if ($mdeExtension) {
-        # If the MDE extension is found, display its status
-        $status = $mdeExtension.Statuses | Select-Object -First 1
+    $extensions | ForEach-Object {
+        # Parse the JSON message
+        $parsedMessage = try {
+            $_.Statuses.Message | ConvertFrom-Json
+        } catch {
+            "Invalid JSON or no message"
+        }
 
-        # Check if the status indicates success or failure
-        if ($status.Code -eq "ProvisioningState/succeeded") {
-            # Success case
-            [PSCustomObject]@{
-                SubscriptionName  = $subscriptionName
-                ResourceGroup     = $resourceGroupName
-                VMName            = $vm.Name
-                OS                = $osType
-                ExtensionName     = $mdeExtension.Name
-                ProvisioningState = $mdeExtension.ProvisioningState
-                Status            = $status.Code
-                Message           = "Successfully deployed"
+        # Limit or format the message for better readability
+        $formattedMessage = if ($parsedMessage -is [string]) {
+            if ($parsedMessage.Length -gt 100) {
+                $parsedMessage.Substring(0, 100) + "..."
+            } else {
+                $parsedMessage
             }
         } else {
-            # Failure case: Display failure status and message
-            [PSCustomObject]@{
-                SubscriptionName  = $subscriptionName
-                ResourceGroup     = $resourceGroupName
-                VMName            = $vm.Name
-                OS                = $osType
-                ExtensionName     = $mdeExtension.Name
-                ProvisioningState = $mdeExtension.ProvisioningState
-                Status            = $status.Code
-                Message           = $status.Message
-            }
+            $parsedMessage
         }
-    } else {
-        # If the MDE extension is missing, indicate it in the table
-        [PSCustomObject]@{
-            SubscriptionName  = $subscriptionName
-            ResourceGroup     = $resourceGroupName
-            VMName            = $vm.Name
-            OS                = $osType
-            ExtensionName     = $extensionName
-            ProvisioningState = "Extension Missing"
-            Status            = "N/A"
-            Message           = "Extension is not installed"
+
+        # Create a custom object for the table output
+        $outputData += [PSCustomObject]@{
+            "Subscription Name" = (Get-AzContext).Subscription.Name
+            "VM Name"           = $vm.Name
+            "Extension Name"    = $_.Name
+            "Display Status"    = $_.Statuses.DisplayStatus
+            "Message"           = $formattedMessage
         }
     }
 }
 
-# Output to table format for console display
-$extensionStatus | Format-Table -AutoSize
+# Output to the console in a formatted table
+$outputData | Format-Table -Property "Subscription Name", "VM Name", "Extension Name", "Display Status", "Message"
 
-# Export to CSV file
-$extensionStatus | Export-Csv -Path $csvFilePath -NoTypeInformation -Force
+# Save the output to a CSV file locally
+$csvFilePath = "/home/abhishek/MDEExtReport/mdeextreport_output.csv"  # Update the path to where you want to store the CSV
+$outputData | Export-Csv -Path $csvFilePath -NoTypeInformation
 
-Write-Host "MDE extension status report has been written to $csvFilePath"
+Write-Host "The report has been saved to: $csvFilePath"
