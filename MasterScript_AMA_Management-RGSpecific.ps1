@@ -5,7 +5,7 @@
 # It is your responsibility to thoroughly test the script in a controlled environment before deploying it in a production setting. 
 # The author will not be held liable for any consequences resulting from the use of this script. Use at your own risk.
 
-# Prompt the user to enter the resource group name
+# Prompt the user to enter the RG (resource group) name
 $resourceGroupName = Read-Host -Prompt "This script can install/uninstall AMA extension on VMs in a specific resource group; specify your resource group to continue"
 
 # Prompt the user to enter the operating system (Windows/Linux)
